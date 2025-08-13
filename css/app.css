@@ -262,12 +262,12 @@ input[type="range"] {
     bottom: 0;
     left: 50%;
     width: 2px;
-    background: var(--accent);
+    background: #fff;
     cursor: ew-resize;
     z-index: 10;
 }
 
-.comparison-handle::after {
+/*.comparison-handle::after {
     content: '';
     position: absolute;
     top: 50%;
@@ -278,6 +278,29 @@ input[type="range"] {
     border-radius: 50%;
     background: var(--accent);
     border: 2px solid var(--panel);
+}*/
+.comparison-handle::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid #fff;
+}
+
+.comparison-handle::before {
+    content: '\2194'; /* Unicode for ↔ */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 25px;
+    color: #fff;
+    z-index: 1;
 }
 
 .meta {
@@ -376,4 +399,37 @@ input[type="range"] {
 
 .lock-btn.active {
     color: var(--accent);
+}
+
+/*flash message desing */
+.flash-message {
+    position: fixed;
+    top: 20px;
+    right: -300px;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 6px;
+    color: #fff;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    z-index: 9999;
+    transition: right 0.3s ease, opacity 0.3s ease;
+    opacity: 0;
+}
+
+.flash-message.show {
+    right: 20px; 
+    opacity: 1;
+}
+
+.flash-message.success {
+    background: linear-gradient(135deg, #28a745, #218838);
+}
+
+.flash-message.error {
+    background: linear-gradient(135deg, #dc3545, #b02a37);
+}
+
+.flash-message.warning {
+    background: linear-gradient(135deg, #ffc107, #d39e00);
 }

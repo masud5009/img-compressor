@@ -467,6 +467,8 @@ async function recompressImage(file, itemEl) {
             `${file.type} → ${processed.format}`;
 
         updateSummary();
+        showFlashMessage(`Recompressed: ${file.type.toUpperCase()} → ${processed.format.toUpperCase()}`,"success");
+
         updateStatus('Ready', 'success');
     } catch (error) {
         console.error('Error recompressing image:', error);
@@ -485,6 +487,7 @@ function removeImage(itemEl) {
     itemEl.remove();
 
     updateSummary();
+    showFlashMessage("Image removed successfully!", "warning");
     if (items.length === 0) {
         downloadAllBtn.disabled = true;
         clearBtn.disabled = true;
@@ -563,6 +566,7 @@ function clearAll() {
     downloadAllBtn.disabled = true;
     clearBtn.disabled = true;
     updateSummary();
+    showFlashMessage("All items have been cleared successfully!", "success");
 }
 
 function updateSummary() {
@@ -577,6 +581,25 @@ function updateSummary() {
     const savings = ((1 - compressedSize / originalSize) * 100).toFixed(1);
 
     summary.textContent = `${count} images • ${formatBytes(originalSize)} → ${formatBytes(compressedSize)} (${savings}% saved)`;
+}
+// Flash message function
+function showFlashMessage(message, type = "success") {
+    const flash = document.createElement("div");
+    flash.className = `flash-message ${type}`;
+    flash.textContent = message;
+
+    document.body.appendChild(flash);
+
+    // Animate in
+    setTimeout(() => {
+        flash.classList.add("show");
+    }, 50);
+
+    // Remove after 3 seconds
+    setTimeout(() => {
+        flash.classList.remove("show");
+        setTimeout(() => flash.remove(), 300);
+    }, 6000);
 }
 
 function updateStatus(text, type) {
