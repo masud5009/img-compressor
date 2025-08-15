@@ -433,3 +433,8 @@ input[type="range"] {
 .flash-message.warning {
     background: linear-gradient(135deg, #ffc107, #d39e00);
 }
+/*copyright css */
+.copyright {
+  text-align: center;
+  padding: 20px 0px 0px 0px;
+}

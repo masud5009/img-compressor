@@ -641,3 +641,14 @@ function getOutputFilename(originalName, outputFormat) {
     const ext = getFileExtension(outputFormat);
     return originalName.replace(/\.[^.]+$/, '') + '.' + ext;
 }
+
+/*block inspect*/
+ // document.addEventListener('contextmenu', event => event.preventDefault()); // Right click off
+ //    document.addEventListener('keydown', event => {
+ //        if (event.ctrlKey && ['u', 's', 'c', 'v', 'x'].includes(event.key.toLowerCase())) {
+ //            event.preventDefault();
+ //        }
+ //        if (event.keyCode == 123) { 
+ //            event.preventDefault();
+ //        }
+ //    });
