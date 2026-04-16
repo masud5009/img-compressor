@@ -61,9 +61,9 @@
                         <div class="control">
                             <label for="preset">Preset</label>
                             <select id="preset">
-                                <option value="custom">Custom</option>
+                                <option value="custom" selected>Custom</option>
                                 <option value="low">Low Compression (Best Quality)</option>
-                                <option value="medium" selected>Medium (Recommended)</option>
+                                <option value="medium">Medium (Recommended)</option>
                                 <option value="high">High Compression (Smaller Files)</option>
                                 <option value="extreme">Extreme (Max Compression)</option>
                             </select>
@@ -77,9 +77,9 @@
                         <div class="control">
                             <label for="format">Output Format</label>
                             <select id="format">
-                                <option value="keep">Keep Original</option>
+                                <option value="keep" selected>Keep Original</option>
                                 <option value="image/jpeg">JPEG</option>
-                                <option value="image/webp" selected>WEBP</option>
+                                <option value="image/webp">WEBP</option>
                                 <option value="image/png">PNG (Lossless)</option>
                             </select>
                         </div>
@@ -181,7 +181,8 @@
                 <p class="hint">
                     <strong>Tip:</strong> All processing happens in your browser - no images are uploaded to any
                     server.<br>
-                    For best results with photos, use WEBP or JPEG format. PNG is best for graphics with transparency.
+                    Keep Original preserves the uploaded format. For best size reduction on photos, WEBP or JPEG usually
+                    works best. PNG is best for graphics with transparency.
                 </p>
 
                 <div id="result" class="grid"></div>

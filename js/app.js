@@ -38,6 +38,8 @@ let items = [];
 let isAspectRatioLocked = true;
 let originalAspectRatio = null;
 let isProcessing = false;
+const LOSSY_OUTPUT_FORMATS = new Set(['image/jpeg', 'image/webp']);
+const CANVAS_OUTPUT_FORMATS = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 // Initialize
 initEventListeners();
@@ -67,6 +69,10 @@ function initEventListeners() {
     // Settings controls
     qualitySlider.addEventListener('input', () => {
         qualityValue.textContent = qualitySlider.value;
+        presetSelect.value = 'custom';
+    });
+
+    formatSelect.addEventListener('change', () => {
         presetSelect.value = 'custom';
     });
 
@@ -237,91 +243,118 @@ async function handleFiles(fileList) {
 }
 
 async function processImage(file) {
-    return new Promise(async (resolve) => {
-        // Read image dimensions and set aspect ratio
-        const img = await loadImage(file);
-        originalAspectRatio = img.width / img.height;
+    // Read image dimensions and set aspect ratio
+    const img = await loadImage(file);
+    originalAspectRatio = img.width / img.height;
 
-        // Get current settings
-        const quality = parseInt(qualitySlider.value) / 100;
-        const format = formatSelect.value === 'keep' ? file.type : formatSelect.value;
-        const removeMetadata = removeMetadataCheck.checked;
+    // Get current settings
+    const quality = parseInt(qualitySlider.value, 10) / 100;
+    const keepOriginalFormat = formatSelect.value === 'keep';
+    const format = keepOriginalFormat ? file.type : formatSelect.value;
 
-        // Resize settings
-        let targetWidth, targetHeight;
-        if (enableResizeCheck.checked) {
-            if (resizeMethodSelect.value === 'percentage') {
-                const scale = parseInt(resizePercentSlider.value) / 100;
-                targetWidth = Math.round(img.width * scale);
-                targetHeight = Math.round(img.height * scale);
-            } else {
-                targetWidth = resizeWidthInput.value ? parseInt(resizeWidthInput.value) : null;
-                targetHeight = resizeHeightInput.value ? parseInt(resizeHeightInput.value) : null;
+    if (!CANVAS_OUTPUT_FORMATS.has(format)) {
+        throw new Error(`Unsupported output format: ${format || 'unknown'}`);
+    }
 
-                if (isAspectRatioLocked) {
-                    if (targetWidth && !targetHeight) {
-                        targetHeight = Math.round(targetWidth / originalAspectRatio);
-                    } else if (targetHeight && !targetWidth) {
-                        targetWidth = Math.round(targetHeight * originalAspectRatio);
-                    }
+    // Resize settings
+    let targetWidth, targetHeight;
+    if (enableResizeCheck.checked) {
+        if (resizeMethodSelect.value === 'percentage') {
+            const scale = parseInt(resizePercentSlider.value, 10) / 100;
+            targetWidth = Math.round(img.width * scale);
+            targetHeight = Math.round(img.height * scale);
+        } else {
+            targetWidth = resizeWidthInput.value ? parseInt(resizeWidthInput.value, 10) : null;
+            targetHeight = resizeHeightInput.value ? parseInt(resizeHeightInput.value, 10) : null;
+
+            if (isAspectRatioLocked) {
+                if (targetWidth && !targetHeight) {
+                    targetHeight = Math.round(targetWidth / originalAspectRatio);
+                } else if (targetHeight && !targetWidth) {
+                    targetWidth = Math.round(targetHeight * originalAspectRatio);
                 }
             }
+        }
 
-            if (shrinkOnlyCheck.checked) {
-                targetWidth = targetWidth ? Math.min(targetWidth, img.width) : img.width;
-                targetHeight = targetHeight ? Math.min(targetHeight, img.height) : img.height;
+        if (shrinkOnlyCheck.checked) {
+            targetWidth = targetWidth ? Math.min(targetWidth, img.width) : img.width;
+            targetHeight = targetHeight ? Math.min(targetHeight, img.height) : img.height;
+        }
+    } else {
+        targetWidth = img.width;
+        targetHeight = img.height;
+    }
+
+    const dimensionsChanged = targetWidth !== img.width || targetHeight !== img.height;
+
+    // Canvas export already strips EXIF metadata, so avoid a second re-encode
+    // that can make JPEG/WEBP outputs larger than the original file.
+    const canvas = document.createElement('canvas');
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+
+    const outputBlob = await exportCanvasWithAdaptiveCompression(
+        canvas,
+        format,
+        quality,
+        keepOriginalFormat ? file.size : 0,
+        keepOriginalFormat
+    );
+
+    const finalBlob = keepOriginalFormat && !dimensionsChanged && outputBlob.size >= file.size
+        ? file
+        : outputBlob;
+    const finalFormat = finalBlob.type || format;
+    const url = URL.createObjectURL(finalBlob);
+
+    return {
+        blob: finalBlob,
+        url,
+        format: finalFormat,
+        width: targetWidth,
+        height: targetHeight,
+        originalWidth: img.width,
+        originalHeight: img.height
+    };
+}
+
+function exportCanvasBlob(canvas, format, quality) {
+    return new Promise((resolve, reject) => {
+        const exportQuality = LOSSY_OUTPUT_FORMATS.has(format) ? quality : undefined;
+
+        canvas.toBlob(blob => {
+            if (!blob) {
+                reject(new Error(`Failed to export image as ${format}`));
+                return;
             }
-        } else {
-            targetWidth = img.width;
-            targetHeight = img.height;
-        }
 
-        // Create canvas and draw image
-        const canvas = document.createElement('canvas');
-        canvas.width = targetWidth;
-        canvas.height = targetHeight;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
-
-        // Convert to blob with quality
-        const blob = await new Promise(resolve => {
-            canvas.toBlob(blob => resolve(blob), format, quality);
-        });
-
-        // Remove metadata if requested (simplified - in real app you'd use a proper EXIF library)
-        let finalBlob = blob;
-        if (removeMetadata && (format === 'image/jpeg' || format === 'image/webp')) {
-            // In a real implementation, you would use exifr or similar to properly strip metadata
-            finalBlob = await stripMetadata(blob);
-        }
-
-        const url = URL.createObjectURL(finalBlob);
-        resolve({
-            blob: finalBlob,
-            url,
-            format,
-            width: targetWidth,
-            height: targetHeight,
-            originalWidth: img.width,
-            originalHeight: img.height
-        });
+            resolve(blob);
+        }, format, exportQuality);
     });
 }
 
-// Simplified metadata stripping - in a real app you'd use exifr or similar
-async function stripMetadata(blob) {
-    return new Promise(resolve => {
-        const img = new Image();
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0);
-            canvas.toBlob(resolve, blob.type);
-        };
-        img.src = URL.createObjectURL(blob);
-    });
+async function exportCanvasWithAdaptiveCompression(canvas, format, quality, originalSize, keepOriginalFormat) {
+    let bestBlob = await exportCanvasBlob(canvas, format, quality);
+
+    if (!keepOriginalFormat || !LOSSY_OUTPUT_FORMATS.has(format) || bestBlob.size < originalSize) {
+        return bestBlob;
+    }
+
+    for (let nextQuality = quality - 0.05; nextQuality >= 0.1; nextQuality -= 0.05) {
+        const candidateBlob = await exportCanvasBlob(canvas, format, Number(nextQuality.toFixed(2)));
+
+        if (candidateBlob.size < bestBlob.size) {
+            bestBlob = candidateBlob;
+        }
+
+        if (candidateBlob.size < originalSize) {
+            return candidateBlob;
+        }
+    }
+
+    return bestBlob;
 }
 
 function loadImage(file) {
@@ -348,7 +381,7 @@ function addImageToGrid(file, processed) {
             <div class="comparison-handle"></div>
           </div>
           <div class="progress">
-            <div class="progress-bar" style="width: ${((1 - processed.blob.size / file.size) * 100).toFixed(0)}%"></div>
+            <div class="progress-bar" style="width: ${getProgressWidth(file.size, processed.blob.size)}"></div>
           </div>
         </div>
         <div class="meta">
@@ -358,7 +391,7 @@ function addImageToGrid(file, processed) {
           </div>
           <div class="meta-row">
             <span class="meta-label">Size:</span>
-            <span class="meta-value">${formatBytes(file.size)} → ${formatBytes(processed.blob.size)} (${((1 - processed.blob.size / file.size) * 100).toFixed(0)}% saved)</span>
+            <span class="meta-value">${formatSizeComparison(file.size, processed.blob.size)}</span>
           </div>
           <div class="meta-row">
             <span class="meta-label">Dimensions:</span>
@@ -370,7 +403,7 @@ function addImageToGrid(file, processed) {
           </div>
         </div>
         <div class="actions">
-          <a href="${processed.url}" download="${getOutputFilename(file.name, processed.format)}" class="btn btn-sm">
+          <a href="${processed.url}" download="${getDownloadFilename(file, processed.format)}" class="btn btn-sm">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="7 10 12 15 17 10"></polyline>
@@ -454,11 +487,11 @@ async function recompressImage(file, itemEl) {
         // Update the UI
         $('.preview-compressed img', itemEl).src = processed.url;
         $('a[download]', itemEl).href = processed.url;
-        $('a[download]', itemEl).download = getOutputFilename(file.name, processed.format);
-        $('.progress-bar', itemEl).style.width = `${((1 - processed.blob.size / file.size) * 100).toFixed(0)}%`;
+        $('a[download]', itemEl).download = getDownloadFilename(file, processed.format);
+        $('.progress-bar', itemEl).style.width = getProgressWidth(file.size, processed.blob.size);
 
         $('.meta-row:nth-child(2) .meta-value', itemEl).textContent =
-            `${formatBytes(file.size)} → ${formatBytes(processed.blob.size)} (${((1 - processed.blob.size / file.size) * 100).toFixed(0)}% saved)`;
+            formatSizeComparison(file.size, processed.blob.size);
 
         $('.meta-row:nth-child(3) .meta-value', itemEl).textContent =
             `${processed.originalWidth}×${processed.originalHeight} → ${processed.width}×${processed.height}`;
@@ -467,7 +500,7 @@ async function recompressImage(file, itemEl) {
             `${file.type} → ${processed.format}`;
 
         updateSummary();
-        showFlashMessage(`Recompressed: ${file.type.toUpperCase()} → ${processed.format.toUpperCase()}`,"success");
+        showFlashMessage(`Recompressed: ${toDisplayFormat(file.type)} → ${toDisplayFormat(processed.format)}`,"success");
 
         updateStatus('Ready', 'success');
     } catch (error) {
@@ -513,8 +546,7 @@ async function downloadAllAsZip() {
 
         // Add each image to the zip
         for (const item of items) {
-            const ext = getFileExtension(item.processed.format);
-            const filename = getOutputFilename(item.file.name, item.processed.format);
+            const filename = getDownloadFilename(item.file, item.processed.format);
             zip.file(filename, item.processed.blob);
         }
 
@@ -578,9 +610,8 @@ function updateSummary() {
 
     const originalSize = items.reduce((sum, item) => sum + item.file.size, 0);
     const compressedSize = items.reduce((sum, item) => sum + item.processed.blob.size, 0);
-    const savings = ((1 - compressedSize / originalSize) * 100).toFixed(1);
 
-    summary.textContent = `${count} images • ${formatBytes(originalSize)} → ${formatBytes(compressedSize)} (${savings}% saved)`;
+    summary.textContent = getSummaryText(count, originalSize, compressedSize);
 }
 // Flash message function
 function showFlashMessage(message, type = "success") {
@@ -617,6 +648,26 @@ function updateStatus(text, type) {
     }
 }
 
+function getSizeChangePercent(originalSize, compressedSize) {
+    return (1 - compressedSize / originalSize) * 100;
+}
+
+function formatSizeComparison(originalSize, compressedSize, precision = 0) {
+    const change = getSizeChangePercent(originalSize, compressedSize);
+    const label = change >= 0 ? 'saved' : 'larger';
+    return `${formatBytes(originalSize)} → ${formatBytes(compressedSize)} (${Math.abs(change).toFixed(precision)}% ${label})`;
+}
+
+function getProgressWidth(originalSize, compressedSize) {
+    return `${Math.max(0, getSizeChangePercent(originalSize, compressedSize)).toFixed(0)}%`;
+}
+
+function getSummaryText(count, originalSize, compressedSize) {
+    const change = getSizeChangePercent(originalSize, compressedSize);
+    const label = change >= 0 ? 'saved' : 'larger';
+    return `${count} images • ${formatBytes(originalSize)} → ${formatBytes(compressedSize)} (${Math.abs(change).toFixed(1)}% ${label})`;
+}
+
 function formatBytes(bytes) {
     if (!bytes) return '0 B';
 
@@ -637,7 +688,19 @@ function getFileExtension(mimeType) {
             mimeType === 'image/webp' ? 'webp' : 'jpg';
 }
 
-function getOutputFilename(originalName, outputFormat) {
+function getDownloadFilename(file, outputFormat) {
+    return getOutputFilename(file.name, outputFormat, file.type);
+}
+
+function toDisplayFormat(mimeType) {
+    return mimeType ? mimeType.toUpperCase() : 'UNKNOWN';
+}
+
+function getOutputFilename(originalName, outputFormat, originalFormat = null) {
+    if (originalFormat && outputFormat === originalFormat) {
+        return originalName;
+    }
+
     const ext = getFileExtension(outputFormat);
     return originalName.replace(/\.[^.]+$/, '') + '.' + ext;
 }
