@@ -18,7 +18,6 @@ const presetSelect = $('#preset');
 const qualitySlider = $('#quality');
 const qualityValue = $('#qualityValue');
 const formatSelect = $('#format');
-const removeMetadataCheck = $('#removeMetadata');
 const enableResizeCheck = $('#enableResize');
 const resizeMethodSelect = $('#resizeMethod');
 const resizePercentSlider = $('#resizePercent');
