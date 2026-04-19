@@ -27,6 +27,10 @@ body.is-loading {
     overflow: hidden;
 }
 
+body.controls-open {
+    overflow: hidden;
+}
+
 .page-preloader {
     position: fixed;
     inset: 0;
@@ -153,6 +157,60 @@ h1 {
 
 .tab-content.active {
     display: block;
+}
+
+.mobile-controls-bar,
+.controls-shell__header {
+    display: none;
+}
+
+.mobile-controls-toggle {
+    width: 100%;
+    justify-content: center;
+}
+
+.controls-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(4, 10, 20, 0.68);
+    backdrop-filter: blur(6px);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+    z-index: 998;
+}
+
+.controls-backdrop.is-visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.controls-shell__eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+}
+
+.controls-shell__header h2 {
+    margin-top: 6px;
+    font-size: 20px;
+}
+
+.controls-shell__close {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text);
+    cursor: pointer;
 }
 
 .controls {
@@ -705,6 +763,47 @@ input[type="checkbox"] {
 
     .controls {
         grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+    }
+}
+
+@media (max-width: 820px) {
+    .mobile-controls-bar {
+        display: block;
+        margin-bottom: 16px;
+    }
+
+    .controls-shell {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: min(92vw, 420px);
+        padding: 18px 16px 24px;
+        background: rgba(10, 16, 30, 0.96);
+        border-left: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: -20px 0 45px rgba(0, 0, 0, 0.35);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        transform: translateX(100%);
+        transition: transform 0.28s ease;
+        z-index: 999;
+    }
+
+    .controls-shell.is-open {
+        transform: translateX(0);
+    }
+
+    .controls-shell__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .controls-shell .controls {
+        grid-template-columns: 1fr;
+        margin-bottom: 0;
     }
 }
 

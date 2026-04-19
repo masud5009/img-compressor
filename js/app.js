@@ -36,10 +36,15 @@ const resizeHeightInput = $('#resizeHeight');
 const lockAspectBtn = $('#lockAspect');
 const shrinkOnlyCheck = $('#shrinkOnly');
 const presetButtons = $$('.preset-btn');
+const controlsShell = $('#controlsShell');
+const controlsBackdrop = $('#controlsBackdrop');
+const openControlsBtn = $('#openControlsBtn');
+const closeControlsBtn = $('#closeControlsBtn');
 
 // Tab elements
 const tabs = $$('.tab');
 const tabContents = $$('.tab-content');
+const mobileControlsQuery = window.matchMedia('(max-width: 820px)');
 
 // State
 let items = [];
@@ -55,6 +60,7 @@ const CANVAS_OUTPUT_FORMATS = new Set(['image/jpeg', 'image/png', 'image/webp'])
 // Initialize
 initEventListeners();
 initPagePreloader();
+syncControlsShell();
 updateStatus('Ready', 'muted');
 updateBatchSelectionUI();
 
@@ -111,6 +117,18 @@ function initEventListeners() {
         lockAspectBtn.classList.toggle('active', isAspectRatioLocked);
     });
 
+    openControlsBtn?.addEventListener('click', () => {
+        toggleControlsShell();
+    });
+
+    closeControlsBtn?.addEventListener('click', () => {
+        closeControlsShell();
+    });
+
+    controlsBackdrop?.addEventListener('click', () => {
+        closeControlsShell();
+    });
+
     // Actions
     downloadAllBtn.addEventListener('click', downloadAllAsZip);
     clearBtn.addEventListener('click', clearAll);
@@ -120,12 +138,25 @@ function initEventListeners() {
     // Tabs
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
+            closeControlsShell();
             tabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
 
             tabContents.forEach(content => content.classList.remove('active'));
             $(`#${tab.dataset.tab}-tab`).classList.add('active');
         });
+    });
+
+    if (typeof mobileControlsQuery.addEventListener === 'function') {
+        mobileControlsQuery.addEventListener('change', syncControlsShell);
+    } else if (typeof mobileControlsQuery.addListener === 'function') {
+        mobileControlsQuery.addListener(syncControlsShell);
+    }
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            closeControlsShell();
+        }
     });
 }
 
@@ -509,6 +540,63 @@ function hidePagePreloader() {
 
 function getDropAreaDefaultMessage(area) {
     return area === batchDropArea ? 'Preparing batch files...' : 'Processing images...';
+}
+
+function isMobileControlsMode() {
+    return mobileControlsQuery.matches;
+}
+
+function toggleControlsShell() {
+    if (document.body.classList.contains('controls-open')) {
+        closeControlsShell();
+        return;
+    }
+
+    openControlsShell();
+}
+
+function openControlsShell() {
+    if (!controlsShell || !isMobileControlsMode()) return;
+
+    document.body.classList.add('controls-open');
+    controlsShell.classList.add('is-open');
+    controlsBackdrop?.classList.add('is-visible');
+    controlsShell.setAttribute('aria-hidden', 'false');
+    openControlsBtn?.setAttribute('aria-expanded', 'true');
+}
+
+function closeControlsShell() {
+    if (!controlsShell) return;
+
+    document.body.classList.remove('controls-open');
+    controlsShell.classList.remove('is-open');
+    controlsBackdrop?.classList.remove('is-visible');
+    openControlsBtn?.setAttribute('aria-expanded', 'false');
+
+    if (isMobileControlsMode()) {
+        controlsShell.setAttribute('aria-hidden', 'true');
+    } else {
+        controlsShell.removeAttribute('aria-hidden');
+    }
+}
+
+function syncControlsShell() {
+    if (!controlsShell) return;
+
+    if (isMobileControlsMode()) {
+        if (!document.body.classList.contains('controls-open')) {
+            controlsShell.setAttribute('aria-hidden', 'true');
+            controlsShell.classList.remove('is-open');
+            controlsBackdrop?.classList.remove('is-visible');
+        }
+        return;
+    }
+
+    document.body.classList.remove('controls-open');
+    controlsShell.classList.remove('is-open');
+    controlsBackdrop?.classList.remove('is-visible');
+    controlsShell.removeAttribute('aria-hidden');
+    openControlsBtn?.setAttribute('aria-expanded', 'false');
 }
 
 function setDropAreaFeedback(area, state, message = '') {
