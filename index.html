@@ -11,7 +11,15 @@
     <link rel="stylesheet" href="css/app.css">
 </head>
 
-<body>
+<body class="is-loading">
+    <div class="page-preloader" id="pagePreloader" aria-hidden="true">
+        <div class="page-preloader__content">
+            <span class="page-preloader__spinner"></span>
+            <p class="page-preloader__eyebrow">Image Compressor</p>
+            <h2>Preparing workspace...</h2>
+        </div>
+    </div>
+
     <div class="wrap">
         <div class="card">
             <div class="head">
@@ -170,6 +178,10 @@
                     <div>Drag & drop images here or</div>
                     <label for="fileInput" class="file-label">Select Files</label>
                     <input type="file" id="fileInput" accept="image/*" multiple>
+                    <div class="drop-area-status" aria-live="polite">
+                        <span class="drop-area-status__spinner"></span>
+                        <span class="drop-area-status__text">Processing images...</span>
+                    </div>
                 </div>
 
                 <p class="hint">
@@ -213,6 +225,10 @@
                         </div>
                         <input type="file" id="batchFileInput" accept="image/*" multiple>
                         <input type="file" id="batchFolderInput" webkitdirectory directory multiple>
+                        <div class="drop-area-status" aria-live="polite">
+                            <span class="drop-area-status__spinner"></span>
+                            <span class="drop-area-status__text">Preparing batch files...</span>
+                        </div>
                     </div>
                     <p id="batchSelectionInfo" class="hint batch-hint">No batch files selected.</p>
                 </div>

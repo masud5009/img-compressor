@@ -9,6 +9,7 @@ const fileInput = $('#fileInput');
 const batchDropArea = $('#batchDropArea');
 const batchFileInput = $('#batchFileInput');
 const batchFolderInput = $('#batchFolderInput');
+const pagePreloader = $('#pagePreloader');
 const result = $('#result');
 const downloadAllBtn = $('#downloadAllBtn');
 const clearBtn = $('#clearBtn');
@@ -53,6 +54,7 @@ const CANVAS_OUTPUT_FORMATS = new Set(['image/jpeg', 'image/png', 'image/webp'])
 
 // Initialize
 initEventListeners();
+initPagePreloader();
 updateStatus('Ready', 'muted');
 updateBatchSelectionUI();
 
@@ -247,16 +249,33 @@ async function handleFiles(fileList) {
     const entries = createImageEntries(fileList);
     fileInput.value = '';
 
-    if (!entries.length) return;
+    if (!entries.length) {
+        resetDropAreaFeedback(dropArea);
+        return;
+    }
+
+    setDropAreaFeedback(
+        dropArea,
+        'uploading',
+        `Processing ${entries.length} image${entries.length === 1 ? '' : 's'}...`
+    );
 
     const { processedCount, failedCount } = await processEntries(entries, {
         statusPrefix: 'Processing'
     });
 
     if (processedCount) {
+        setDropAreaFeedback(
+            dropArea,
+            'success',
+            `${processedCount} image${processedCount === 1 ? '' : 's'} ready to download`
+        );
         showFlashMessage(`${processedCount} image${processedCount === 1 ? '' : 's'} processed.`, failedCount ? 'warning' : 'success');
     } else if (failedCount) {
+        resetDropAreaFeedback(dropArea);
         showFlashMessage('Selected files could not be processed.', 'error');
+    } else {
+        resetDropAreaFeedback(dropArea);
     }
 }
 
@@ -272,10 +291,16 @@ function handleBatchSelection(fileList) {
     updateBatchSelectionUI();
 
     if (!batchQueue.length) {
+        resetDropAreaFeedback(batchDropArea);
         updateStatus('No valid images selected for batch', 'danger');
         return;
     }
 
+    setDropAreaFeedback(
+        batchDropArea,
+        'success',
+        `${batchQueue.length} file${batchQueue.length === 1 ? '' : 's'} queued for batch`
+    );
     updateStatus(`${batchQueue.length} batch file${batchQueue.length === 1 ? '' : 's'} ready`, 'muted');
     showFlashMessage(`${batchQueue.length} file${batchQueue.length === 1 ? '' : 's'} queued for batch processing.`, 'success');
 }
@@ -292,6 +317,11 @@ async function processBatchQueue() {
     batchCancelRequested = false;
     isBatchProcessing = true;
     updateBatchSelectionUI();
+    setDropAreaFeedback(
+        batchDropArea,
+        'uploading',
+        `Processing ${selectedCount} batch file${selectedCount === 1 ? '' : 's'}...`
+    );
 
     const batchResult = await processEntries(batchQueue, {
         statusPrefix: 'Batch processing',
@@ -311,6 +341,7 @@ async function processBatchQueue() {
     updateBatchSelectionUI();
 
     if (batchResult.cancelled) {
+        resetDropAreaFeedback(batchDropArea);
         showFlashMessage(
             `Batch cancelled after ${batchResult.processedCount} of ${selectedCount} file${selectedCount === 1 ? '' : 's'}.`,
             'warning'
@@ -319,12 +350,20 @@ async function processBatchQueue() {
     }
 
     if (batchResult.processedCount) {
+        setDropAreaFeedback(
+            batchDropArea,
+            'success',
+            `${batchResult.processedCount} batch file${batchResult.processedCount === 1 ? '' : 's'} complete`
+        );
         showFlashMessage(
             `Batch processed ${batchResult.processedCount} file${batchResult.processedCount === 1 ? '' : 's'}.`,
             batchResult.failedCount ? 'warning' : 'success'
         );
     } else if (batchResult.failedCount) {
+        resetDropAreaFeedback(batchDropArea);
         showFlashMessage('Selected batch files could not be processed.', 'error');
+    } else {
+        resetDropAreaFeedback(batchDropArea);
     }
 }
 
@@ -341,6 +380,7 @@ function cancelBatchProcess() {
     batchQueue = [];
     resetBatchInputs();
     updateBatchSelectionUI();
+    resetDropAreaFeedback(batchDropArea);
     updateStatus('Batch selection cleared', 'muted');
     showFlashMessage('Batch selection cleared.', 'warning');
 }
@@ -435,6 +475,80 @@ function updateBatchSelectionUI() {
     processBatchBtn.disabled = count === 0 || isProcessing;
     cancelBatchBtn.textContent = isBatchProcessing ? 'Cancel Batch' : 'Clear Selection';
     cancelBatchBtn.disabled = count === 0 && !isBatchProcessing;
+}
+
+function initPagePreloader() {
+    if (!pagePreloader) {
+        document.body.classList.remove('is-loading');
+        return;
+    }
+
+    if (document.readyState === 'complete') {
+        window.setTimeout(hidePagePreloader, 180);
+        return;
+    }
+
+    window.addEventListener('load', () => {
+        window.setTimeout(hidePagePreloader, 220);
+    }, { once: true });
+
+    window.setTimeout(hidePagePreloader, 2200);
+}
+
+function hidePagePreloader() {
+    document.body.classList.remove('is-loading');
+
+    if (!pagePreloader || pagePreloader.dataset.hidden === 'true') {
+        return;
+    }
+
+    pagePreloader.dataset.hidden = 'true';
+    pagePreloader.classList.add('hidden');
+    window.setTimeout(() => pagePreloader.remove(), 500);
+}
+
+function getDropAreaDefaultMessage(area) {
+    return area === batchDropArea ? 'Preparing batch files...' : 'Processing images...';
+}
+
+function setDropAreaFeedback(area, state, message = '') {
+    if (!area) return;
+
+    clearTimeout(area.feedbackTimer);
+    area.classList.remove('uploading', 'upload-success');
+
+    const statusMessage = $('.drop-area-status__text', area);
+    if (statusMessage) {
+        statusMessage.textContent = message || getDropAreaDefaultMessage(area);
+    }
+
+    if (state === 'uploading') {
+        area.classList.add('uploading');
+        area.setAttribute('aria-busy', 'true');
+        return;
+    }
+
+    if (state === 'success') {
+        area.classList.add('upload-success');
+        area.setAttribute('aria-busy', 'false');
+        area.feedbackTimer = window.setTimeout(() => resetDropAreaFeedback(area), 1600);
+        return;
+    }
+
+    resetDropAreaFeedback(area);
+}
+
+function resetDropAreaFeedback(area) {
+    if (!area) return;
+
+    clearTimeout(area.feedbackTimer);
+    area.classList.remove('uploading', 'upload-success');
+    area.setAttribute('aria-busy', 'false');
+
+    const statusMessage = $('.drop-area-status__text', area);
+    if (statusMessage) {
+        statusMessage.textContent = getDropAreaDefaultMessage(area);
+    }
 }
 
 async function processImage(file) {
@@ -569,6 +683,7 @@ function addImageToGrid(file, processed, options = {}) {
         : '';
     const itemEl = document.createElement('div');
     itemEl.className = 'item';
+    itemEl.style.animationDelay = `${Math.min(items.length * 70, 280)}ms`;
     itemEl.innerHTML = `
         <div class="preview-container">
           <div class="preview-comparison">
@@ -815,6 +930,8 @@ function clearAll() {
     batchCancelRequested = false;
     isBatchProcessing = false;
     resetBatchInputs();
+    resetDropAreaFeedback(dropArea);
+    resetDropAreaFeedback(batchDropArea);
     updateBatchSelectionUI();
     updateSummary();
     showFlashMessage("All items and queued batch files have been cleared successfully!", "success");
