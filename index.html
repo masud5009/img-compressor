@@ -204,12 +204,17 @@
                     <h3>Batch Processing</h3>
                     <p style="margin-bottom: 16px;">Process multiple images with the same settings</p>
 
-                    <div class="drop-area">
+                    <div class="drop-area" id="batchDropArea">
                         <div class="icon">📦</div>
-                        <div>Drag & drop folder or multiple files</div>
-                        <label for="batchFileInput" class="file-label">Select Files/Folder</label>
-                        <input type="file" id="batchFileInput" webkitdirectory directory multiple>
+                        <div>Drag & drop multiple images, or choose files/folder</div>
+                        <div class="file-actions">
+                            <label for="batchFileInput" class="file-label">Select Files</label>
+                            <label for="batchFolderInput" class="file-label">Select Folder</label>
+                        </div>
+                        <input type="file" id="batchFileInput" accept="image/*" multiple>
+                        <input type="file" id="batchFolderInput" webkitdirectory directory multiple>
                     </div>
+                    <p id="batchSelectionInfo" class="hint batch-hint">No batch files selected.</p>
                 </div>
 
                 <div class="control-group" style="margin-top: 20px;">
@@ -229,7 +234,7 @@
                 </div>
 
                 <div style="margin-top: 24px; display: flex; justify-content: flex-end; gap: 12px;">
-                    <button id="cancelBatchBtn" class="btn btn-outline">Cancel</button>
+                    <button id="cancelBatchBtn" class="btn btn-outline" disabled>Clear Selection</button>
                     <button id="processBatchBtn" class="btn" disabled>Process 0 Files</button>
                 </div>
             </div>

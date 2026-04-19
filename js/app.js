@@ -6,12 +6,20 @@ const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
 // Main elements
 const dropArea = $('#dropArea');
 const fileInput = $('#fileInput');
+const batchDropArea = $('#batchDropArea');
+const batchFileInput = $('#batchFileInput');
+const batchFolderInput = $('#batchFolderInput');
 const result = $('#result');
 const downloadAllBtn = $('#downloadAllBtn');
 const clearBtn = $('#clearBtn');
 const summary = $('#summary');
 const statusText = $('#statusText');
 const statusIcon = $('.status-icon');
+const batchSelectionInfo = $('#batchSelectionInfo');
+const processBatchBtn = $('#processBatchBtn');
+const cancelBatchBtn = $('#cancelBatchBtn');
+const outputPrefixInput = $('#outputPrefix');
+const preserveStructureCheck = $('#preserveStructure');
 
 // Settings elements
 const presetSelect = $('#preset');
@@ -34,36 +42,30 @@ const tabContents = $$('.tab-content');
 
 // State
 let items = [];
+let batchQueue = [];
 let isAspectRatioLocked = true;
 let originalAspectRatio = null;
 let isProcessing = false;
+let isBatchProcessing = false;
+let batchCancelRequested = false;
 const LOSSY_OUTPUT_FORMATS = new Set(['image/jpeg', 'image/webp']);
 const CANVAS_OUTPUT_FORMATS = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 // Initialize
 initEventListeners();
 updateStatus('Ready', 'muted');
+updateBatchSelectionUI();
 
 // Functions
 function initEventListeners() {
     // Drag and drop
-    dropArea.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropArea.classList.add('drag');
-    });
-
-    dropArea.addEventListener('dragleave', () => {
-        dropArea.classList.remove('drag');
-    });
-
-    dropArea.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropArea.classList.remove('drag');
-        handleFiles(e.dataTransfer.files);
-    });
+    bindDropArea(dropArea, handleFiles);
+    bindDropArea(batchDropArea, handleBatchSelection);
 
     // File input
     fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+    batchFileInput.addEventListener('change', (e) => handleBatchSelection(e.target.files));
+    batchFolderInput.addEventListener('change', (e) => handleBatchSelection(e.target.files));
 
     // Settings controls
     qualitySlider.addEventListener('input', () => {
@@ -110,6 +112,8 @@ function initEventListeners() {
     // Actions
     downloadAllBtn.addEventListener('click', downloadAllAsZip);
     clearBtn.addEventListener('click', clearAll);
+    processBatchBtn.addEventListener('click', processBatchQueue);
+    cancelBatchBtn.addEventListener('click', cancelBatchProcess);
 
     // Tabs
     tabs.forEach(tab => {
@@ -120,6 +124,25 @@ function initEventListeners() {
             tabContents.forEach(content => content.classList.remove('active'));
             $(`#${tab.dataset.tab}-tab`).classList.add('active');
         });
+    });
+}
+
+function bindDropArea(area, onDrop) {
+    if (!area) return;
+
+    area.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        area.classList.add('drag');
+    });
+
+    area.addEventListener('dragleave', () => {
+        area.classList.remove('drag');
+    });
+
+    area.addEventListener('drop', (e) => {
+        e.preventDefault();
+        area.classList.remove('drag');
+        onDrop(e.dataTransfer.files);
     });
 }
 
@@ -216,29 +239,202 @@ function handleDimensionChange(e) {
 }
 
 async function handleFiles(fileList) {
-    const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
-    if (!files.length) return;
+    if (isProcessing) {
+        showFlashMessage('Wait for the current processing task to finish first.', 'warning');
+        return;
+    }
 
-    updateStatus('Processing...', 'active');
+    const entries = createImageEntries(fileList);
+    fileInput.value = '';
+
+    if (!entries.length) return;
+
+    const { processedCount, failedCount } = await processEntries(entries, {
+        statusPrefix: 'Processing'
+    });
+
+    if (processedCount) {
+        showFlashMessage(`${processedCount} image${processedCount === 1 ? '' : 's'} processed.`, failedCount ? 'warning' : 'success');
+    } else if (failedCount) {
+        showFlashMessage('Selected files could not be processed.', 'error');
+    }
+}
+
+function handleBatchSelection(fileList) {
+    if (isProcessing) {
+        resetBatchInputs();
+        showFlashMessage('Wait for the current processing task to finish first.', 'warning');
+        return;
+    }
+
+    batchQueue = createImageEntries(fileList);
+    resetBatchInputs();
+    updateBatchSelectionUI();
+
+    if (!batchQueue.length) {
+        updateStatus('No valid images selected for batch', 'danger');
+        return;
+    }
+
+    updateStatus(`${batchQueue.length} batch file${batchQueue.length === 1 ? '' : 's'} ready`, 'muted');
+    showFlashMessage(`${batchQueue.length} file${batchQueue.length === 1 ? '' : 's'} queued for batch processing.`, 'success');
+}
+
+async function processBatchQueue() {
+    if (!batchQueue.length || isProcessing) return;
+
+    const selectedCount = batchQueue.length;
+    const batchOptions = {
+        prefix: outputPrefixInput.value,
+        preserveStructure: preserveStructureCheck.checked
+    };
+
+    batchCancelRequested = false;
+    isBatchProcessing = true;
+    updateBatchSelectionUI();
+
+    const batchResult = await processEntries(batchQueue, {
+        statusPrefix: 'Batch processing',
+        allowCancel: true,
+        buildItemOptions: (entry) => ({
+            batchOptions: {
+                prefix: batchOptions.prefix,
+                preserveStructure: batchOptions.preserveStructure,
+                relativePath: entry.relativePath
+            }
+        })
+    });
+
+    isBatchProcessing = false;
+    batchCancelRequested = false;
+    batchQueue = [];
+    updateBatchSelectionUI();
+
+    if (batchResult.cancelled) {
+        showFlashMessage(
+            `Batch cancelled after ${batchResult.processedCount} of ${selectedCount} file${selectedCount === 1 ? '' : 's'}.`,
+            'warning'
+        );
+        return;
+    }
+
+    if (batchResult.processedCount) {
+        showFlashMessage(
+            `Batch processed ${batchResult.processedCount} file${batchResult.processedCount === 1 ? '' : 's'}.`,
+            batchResult.failedCount ? 'warning' : 'success'
+        );
+    } else if (batchResult.failedCount) {
+        showFlashMessage('Selected batch files could not be processed.', 'error');
+    }
+}
+
+function cancelBatchProcess() {
+    if (isBatchProcessing) {
+        batchCancelRequested = true;
+        updateBatchSelectionUI();
+        updateStatus('Stopping batch after the current file...', 'warning');
+        return;
+    }
+
+    if (!batchQueue.length) return;
+
+    batchQueue = [];
+    resetBatchInputs();
+    updateBatchSelectionUI();
+    updateStatus('Batch selection cleared', 'muted');
+    showFlashMessage('Batch selection cleared.', 'warning');
+}
+
+async function processEntries(entries, options = {}) {
+    const {
+        statusPrefix = 'Processing',
+        allowCancel = false,
+        buildItemOptions = () => undefined
+    } = options;
+
+    let processedCount = 0;
+    let failedCount = 0;
+    let cancelled = false;
+
     isProcessing = true;
     clearBtn.disabled = true;
+    updateBatchSelectionUI();
 
     try {
-        for (const file of files) {
-            const processed = await processImage(file);
-            addImageToGrid(file, processed);
-        }
+        for (let index = 0; index < entries.length; index++) {
+            if (allowCancel && batchCancelRequested) {
+                cancelled = true;
+                break;
+            }
 
-        updateSummary();
-        downloadAllBtn.disabled = false;
-        clearBtn.disabled = false;
-        updateStatus('Ready', 'success');
-    } catch (error) {
-        console.error('Error processing images:', error);
-        updateStatus('Error processing files', 'danger');
+            const entry = entries[index];
+            updateStatus(`${statusPrefix} ${index + 1}/${entries.length}...`, 'active');
+
+            try {
+                const processed = await processImage(entry.file);
+                addImageToGrid(entry.file, processed, buildItemOptions(entry));
+                processedCount += 1;
+            } catch (error) {
+                failedCount += 1;
+                console.error(`Error processing ${entry.file.name}:`, error);
+            }
+        }
     } finally {
         isProcessing = false;
+        updateSummary();
+        downloadAllBtn.disabled = items.length === 0;
+        clearBtn.disabled = items.length === 0;
+
+        if (cancelled) {
+            updateStatus(`Batch cancelled (${processedCount}/${entries.length})`, 'warning');
+        } else if (failedCount && processedCount) {
+            updateStatus('Completed with some skipped files', 'warning');
+        } else if (failedCount) {
+            updateStatus('No files were processed', 'danger');
+        } else {
+            updateStatus('Ready', 'success');
+        }
+
+        updateBatchSelectionUI();
     }
+
+    return { processedCount, failedCount, cancelled };
+}
+
+function createImageEntries(fileList) {
+    return Array.from(fileList || [])
+        .filter(file => file.type && file.type.startsWith('image/'))
+        .map(file => ({
+            file,
+            relativePath: normalizeRelativePath(file.webkitRelativePath || file.name)
+        }));
+}
+
+function resetBatchInputs() {
+    batchFileInput.value = '';
+    batchFolderInput.value = '';
+}
+
+function updateBatchSelectionUI() {
+    const count = batchQueue.length;
+    const noun = count === 1 ? 'file' : 'files';
+
+    if (!count) {
+        batchSelectionInfo.textContent = isBatchProcessing
+            ? 'Finishing the current batch task...'
+            : 'No batch files selected.';
+    } else if (isBatchProcessing) {
+        batchSelectionInfo.textContent = batchCancelRequested
+            ? `Cancelling batch. ${count} selected ${noun} will stop after the current image.`
+            : `Processing ${count} selected ${noun} with the current settings.`;
+    } else {
+        batchSelectionInfo.textContent = `${count} ${noun} selected for the next batch run.`;
+    }
+
+    processBatchBtn.textContent = `Process ${count} File${count === 1 ? '' : 's'}`;
+    processBatchBtn.disabled = count === 0 || isProcessing;
+    cancelBatchBtn.textContent = isBatchProcessing ? 'Cancel Batch' : 'Clear Selection';
+    cancelBatchBtn.disabled = count === 0 && !isBatchProcessing;
 }
 
 async function processImage(file) {
@@ -365,14 +561,19 @@ function loadImage(file) {
     });
 }
 
-function addImageToGrid(file, processed) {
+function addImageToGrid(file, processed, options = {}) {
+    const originalUrl = URL.createObjectURL(file);
+    const batchOptions = options.batchOptions || null;
+    const sourcePath = batchOptions && batchOptions.relativePath !== file.name
+        ? normalizeRelativePath(batchOptions.relativePath)
+        : '';
     const itemEl = document.createElement('div');
     itemEl.className = 'item';
     itemEl.innerHTML = `
         <div class="preview-container">
           <div class="preview-comparison">
             <div class="preview-original">
-              <img class="preview-img" src="${URL.createObjectURL(file)}" alt="Original">
+              <img class="preview-img" src="${originalUrl}" alt="Original">
             </div>
             <div class="preview-compressed">
               <img class="preview-img" src="${processed.url}" alt="Compressed">
@@ -386,11 +587,11 @@ function addImageToGrid(file, processed) {
         <div class="meta">
           <div class="meta-row">
             <span class="meta-label">Name:</span>
-            <span class="meta-value">${file.name}</span>
+            <span class="meta-value">${escapeHtml(file.name)}</span>
           </div>
           <div class="meta-row">
             <span class="meta-label">Size:</span>
-            <span class="meta-value">${formatSizeComparison(file.size, processed.blob.size)}</span>
+            <span class="meta-value">${escapeHtml(formatSizeComparison(file.size, processed.blob.size))}</span>
           </div>
           <div class="meta-row">
             <span class="meta-label">Dimensions:</span>
@@ -400,9 +601,15 @@ function addImageToGrid(file, processed) {
             <span class="meta-label">Format:</span>
             <span class="meta-value">${file.type} → ${processed.format}</span>
           </div>
+          ${sourcePath ? `
+          <div class="meta-row">
+            <span class="meta-label">Source:</span>
+            <span class="meta-value">${escapeHtml(sourcePath)}</span>
+          </div>
+          ` : ''}
         </div>
         <div class="actions">
-          <a href="${processed.url}" download="${getDownloadFilename(file, processed.format)}" class="btn btn-sm">
+          <a href="${processed.url}" class="btn btn-sm download-link">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="7 10 12 15 17 10"></polyline>
@@ -432,12 +639,15 @@ function addImageToGrid(file, processed) {
     // Setup comparison slider
     setupComparisonSlider(itemEl);
 
+    const item = { file, processed, el: itemEl, batchOptions, originalUrl };
+    $('.download-link', itemEl).download = getItemDownloadName(item);
+
     // Add event listeners
     $('.recompress', itemEl).addEventListener('click', () => recompressImage(file, itemEl));
     $('.remove', itemEl).addEventListener('click', () => removeImage(itemEl));
 
     result.prepend(itemEl);
-    items.push({ file, processed, el: itemEl });
+    items.push(item);
 }
 
 function setupComparisonSlider(itemEl) {
@@ -485,8 +695,8 @@ async function recompressImage(file, itemEl) {
 
         // Update the UI
         $('.preview-compressed img', itemEl).src = processed.url;
-        $('a[download]', itemEl).href = processed.url;
-        $('a[download]', itemEl).download = getDownloadFilename(file, processed.format);
+        $('.download-link', itemEl).href = processed.url;
+        $('.download-link', itemEl).download = getItemDownloadName(item);
         $('.progress-bar', itemEl).style.width = getProgressWidth(file.size, processed.blob.size);
 
         $('.meta-row:nth-child(2) .meta-value', itemEl).textContent =
@@ -516,6 +726,7 @@ function removeImage(itemEl) {
 
     const [item] = items.splice(index, 1);
     URL.revokeObjectURL(item.processed.url);
+    URL.revokeObjectURL(item.originalUrl);
     itemEl.remove();
 
     updateSummary();
@@ -542,10 +753,11 @@ async function downloadAllAsZip() {
 
     try {
         const zip = new JSZip();
+        const usedPaths = new Set();
 
         // Add each image to the zip
         for (const item of items) {
-            const filename = getDownloadFilename(item.file, item.processed.format);
+            const filename = getUniqueArchivePath(getItemArchivePath(item), usedPaths);
             zip.file(filename, item.processed.blob);
         }
 
@@ -584,10 +796,13 @@ async function downloadAllAsZip() {
 }
 
 function clearAll() {
-    if (!items.length) return;
+    if (!items.length && !batchQueue.length) return;
 
     // Free memory by revoking object URLs
-    items.forEach(item => URL.revokeObjectURL(item.processed.url));
+    items.forEach(item => {
+        URL.revokeObjectURL(item.processed.url);
+        URL.revokeObjectURL(item.originalUrl);
+    });
 
     // Clear the UI
     items = [];
@@ -596,8 +811,13 @@ function clearAll() {
     // Update UI state
     downloadAllBtn.disabled = true;
     clearBtn.disabled = true;
+    batchQueue = [];
+    batchCancelRequested = false;
+    isBatchProcessing = false;
+    resetBatchInputs();
+    updateBatchSelectionUI();
     updateSummary();
-    showFlashMessage("All items have been cleared successfully!", "success");
+    showFlashMessage("All items and queued batch files have been cleared successfully!", "success");
 }
 
 function updateSummary() {
@@ -640,6 +860,8 @@ function updateStatus(text, type) {
         statusIcon.classList.add('active');
     } else if (type === 'danger') {
         statusIcon.style.background = 'var(--danger)';
+    } else if (type === 'warning') {
+        statusIcon.style.background = 'var(--warning)';
     } else if (type === 'success') {
         statusIcon.style.background = 'var(--success)';
     } else {
@@ -689,6 +911,70 @@ function getFileExtension(mimeType) {
 
 function getDownloadFilename(file, outputFormat) {
     return getOutputFilename(file.name, outputFormat, file.type);
+}
+
+function getItemDownloadName(item) {
+    return applyFilenamePrefix(
+        getOutputFilename(item.file.name, item.processed.format, item.file.type),
+        item.batchOptions?.prefix
+    );
+}
+
+function getItemArchivePath(item) {
+    const filename = getItemDownloadName(item);
+
+    if (!item.batchOptions?.preserveStructure) {
+        return filename;
+    }
+
+    const directory = getRelativeDirectory(item.batchOptions.relativePath);
+    return directory ? `${directory}/${filename}` : filename;
+}
+
+function applyFilenamePrefix(filename, prefix = '') {
+    const safePrefix = sanitizeFilenamePrefix(prefix);
+    return safePrefix ? `${safePrefix}${filename}` : filename;
+}
+
+function sanitizeFilenamePrefix(prefix = '') {
+    return String(prefix).replace(/[\\/:*?"<>|]+/g, '_');
+}
+
+function getRelativeDirectory(relativePath = '') {
+    const normalized = normalizeRelativePath(relativePath);
+    const slashIndex = normalized.lastIndexOf('/');
+    return slashIndex === -1 ? '' : normalized.slice(0, slashIndex);
+}
+
+function normalizeRelativePath(relativePath = '') {
+    return String(relativePath)
+        .replace(/\\/g, '/')
+        .replace(/^\/+|\/+$/g, '');
+}
+
+function getUniqueArchivePath(path, usedPaths) {
+    let candidate = path;
+    let counter = 1;
+    const dotIndex = path.lastIndexOf('.');
+    const base = dotIndex === -1 ? path : path.slice(0, dotIndex);
+    const extension = dotIndex === -1 ? '' : path.slice(dotIndex);
+
+    while (usedPaths.has(candidate)) {
+        candidate = `${base} (${counter})${extension}`;
+        counter += 1;
+    }
+
+    usedPaths.add(candidate);
+    return candidate;
+}
+
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 function toDisplayFormat(mimeType) {
