@@ -49,6 +49,7 @@
 
             <div class="tabs">
                 <div class="tab active" data-tab="settings">Image Compression</div>
+                <div class="tab" data-tab="remove-bg">Background Remover</div>
                 <div class="tab" data-tab="batch">Batch Process</div>
             </div>
 
@@ -246,6 +247,78 @@
                         </svg>
                         Download All (.zip)
                     </button> -->
+                </div>
+            </div>
+
+            <div class="tab-content" id="remove-bg-tab">
+                <div class="bg-remove-layout">
+                    <div class="control-group bg-remove-intro">
+                        <h3>Background Remover</h3>
+                        <p>Upload one image, then remove the background directly in your browser.</p>
+                        <div class="control">
+                            <label for="bgRemoveModel">Removal Quality</label>
+                            <select id="bgRemoveModel">
+                                <option value="medium" selected>Best Quality</option>
+                                <option value="small">Fast Mode</option>
+                            </select>
+                        </div>
+                        <p class="hint bg-remove-note">
+                            Best Quality gives cleaner edges. First run may take longer because the AI model needs to
+                            download and cache.
+                        </p>
+                    </div>
+
+                    <div class="drop-area" id="bgRemoveDropArea">
+                        <div class="icon">✂️</div>
+                        <div>Drop a photo or product image here</div>
+                        <label for="bgRemoveInput" class="file-label">Choose Image</label>
+                        <input type="file" id="bgRemoveInput" accept="image/*">
+                        <div class="drop-area-status" aria-live="polite">
+                            <span class="drop-area-status__spinner"></span>
+                            <span class="drop-area-status__text">Preparing background removal...</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-remove-actions">
+                        <button id="bgRemoveStartBtn" class="btn" disabled>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 20l4-16 4 9 4-5 4 12"></path>
+                            </svg>
+                            Remove Background
+                        </button>
+                        <a id="bgRemoveDownloadBtn" class="btn btn-outline" download="background-removed.png"
+                            hidden>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Download PNG
+                        </a>
+                        <button id="bgRemoveClearBtn" class="btn btn-outline" disabled>Clear</button>
+                    </div>
+
+                    <div class="bg-remove-status" id="bgRemoveStatus">Upload an image to start.</div>
+
+                    <div class="bg-remove-preview">
+                        <div class="bg-preview-card">
+                            <div class="bg-preview-card__head">Original</div>
+                            <div class="bg-preview-stage" id="bgOriginalStage">
+                                <div class="bg-preview-empty">Original preview will appear here.</div>
+                                <img id="bgOriginalPreview" class="bg-preview-image" alt="Original preview">
+                            </div>
+                        </div>
+
+                        <div class="bg-preview-card">
+                            <div class="bg-preview-card__head">Transparent PNG</div>
+                            <div class="bg-preview-stage bg-preview-stage--checker" id="bgResultStage">
+                                <div class="bg-preview-empty">Removed background preview will appear here.</div>
+                                <img id="bgResultPreview" class="bg-preview-image" alt="Background removed preview">
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 

@@ -21,6 +21,17 @@ const processBatchBtn = $('#processBatchBtn');
 const cancelBatchBtn = $('#cancelBatchBtn');
 const outputPrefixInput = $('#outputPrefix');
 const preserveStructureCheck = $('#preserveStructure');
+const bgRemoveDropArea = $('#bgRemoveDropArea');
+const bgRemoveInput = $('#bgRemoveInput');
+const bgRemoveStartBtn = $('#bgRemoveStartBtn');
+const bgRemoveDownloadBtn = $('#bgRemoveDownloadBtn');
+const bgRemoveClearBtn = $('#bgRemoveClearBtn');
+const bgRemoveStatus = $('#bgRemoveStatus');
+const bgOriginalStage = $('#bgOriginalStage');
+const bgResultStage = $('#bgResultStage');
+const bgOriginalPreview = $('#bgOriginalPreview');
+const bgResultPreview = $('#bgResultPreview');
+const bgRemoveModelSelect = $('#bgRemoveModel');
 
 // Settings elements
 const presetSelect = $('#preset');
@@ -54,8 +65,14 @@ let originalAspectRatio = null;
 let isProcessing = false;
 let isBatchProcessing = false;
 let batchCancelRequested = false;
+let bgRemoveSourceFile = null;
+let bgRemoveSourceUrl = '';
+let bgRemoveResultUrl = '';
+let bgRemoveBusy = false;
+let bgRemovalModulePromise = null;
 const LOSSY_OUTPUT_FORMATS = new Set(['image/jpeg', 'image/webp']);
 const CANVAS_OUTPUT_FORMATS = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const BG_REMOVAL_MODULE_URL = 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm';
 
 // Initialize
 initEventListeners();
@@ -63,17 +80,20 @@ initPagePreloader();
 syncControlsShell();
 updateStatus('Ready', 'muted');
 updateBatchSelectionUI();
+syncBackgroundRemoveButtons();
 
 // Functions
 function initEventListeners() {
     // Drag and drop
     bindDropArea(dropArea, handleFiles);
     bindDropArea(batchDropArea, handleBatchSelection);
+    bindDropArea(bgRemoveDropArea, handleBackgroundRemoveSelection);
 
     // File input
     fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
     batchFileInput.addEventListener('change', (e) => handleBatchSelection(e.target.files));
     batchFolderInput.addEventListener('change', (e) => handleBatchSelection(e.target.files));
+    bgRemoveInput?.addEventListener('change', (e) => handleBackgroundRemoveSelection(e.target.files));
 
     // Settings controls
     qualitySlider.addEventListener('input', () => {
@@ -128,6 +148,9 @@ function initEventListeners() {
     controlsBackdrop?.addEventListener('click', () => {
         closeControlsShell();
     });
+
+    bgRemoveStartBtn?.addEventListener('click', removeBackgroundFromImage);
+    bgRemoveClearBtn?.addEventListener('click', clearBackgroundRemove);
 
     // Actions
     downloadAllBtn.addEventListener('click', downloadAllAsZip);
@@ -416,6 +439,186 @@ function cancelBatchProcess() {
     showFlashMessage('Batch selection cleared.', 'warning');
 }
 
+function handleBackgroundRemoveSelection(fileList) {
+    if (bgRemoveBusy) {
+        showFlashMessage('Background removal is already running.', 'warning');
+        return;
+    }
+
+    const file = Array.from(fileList || []).find(candidate => candidate.type && candidate.type.startsWith('image/'));
+    bgRemoveInput.value = '';
+
+    if (!file) {
+        resetDropAreaFeedback(bgRemoveDropArea);
+        updateBackgroundRemoveStatus('Select a valid image to remove the background.', 'warning');
+        return;
+    }
+
+    clearBackgroundRemoveResult();
+    revokeBackgroundRemoveSource();
+
+    bgRemoveSourceFile = file;
+    bgRemoveSourceUrl = URL.createObjectURL(file);
+
+    setPreviewImage(bgOriginalStage, bgOriginalPreview, bgRemoveSourceUrl);
+    setPreviewImage(bgResultStage, bgResultPreview, '');
+    syncBackgroundRemoveButtons();
+    setDropAreaFeedback(bgRemoveDropArea, 'success', `${file.name} ready for background removal`);
+    updateBackgroundRemoveStatus('Image ready. Click "Remove Background" to generate a transparent PNG.', 'ready');
+}
+
+async function removeBackgroundFromImage() {
+    if (!bgRemoveSourceFile || bgRemoveBusy) return;
+
+    bgRemoveBusy = true;
+    syncBackgroundRemoveButtons();
+    setDropAreaFeedback(bgRemoveDropArea, 'uploading', 'Removing background...');
+    updateBackgroundRemoveStatus('Loading the background removal engine...', 'working');
+
+    try {
+        const removeBackground = await loadBackgroundRemovalEngine();
+        const selectedModel = getBackgroundRemoveModel();
+        updateBackgroundRemoveStatus(`Processing image with ${getBackgroundRemoveModelLabel(selectedModel)}...`, 'working');
+
+        const resultBlob = await removeBackground(bgRemoveSourceFile, {
+            model: selectedModel
+        });
+
+        clearBackgroundRemoveResult();
+        bgRemoveResultUrl = URL.createObjectURL(resultBlob);
+        setPreviewImage(bgResultStage, bgResultPreview, bgRemoveResultUrl);
+
+        bgRemoveDownloadBtn.hidden = false;
+        bgRemoveDownloadBtn.href = bgRemoveResultUrl;
+        bgRemoveDownloadBtn.download = getBackgroundRemovedFilename(bgRemoveSourceFile.name);
+
+        setDropAreaFeedback(bgRemoveDropArea, 'success', 'Background removed successfully');
+        updateBackgroundRemoveStatus('Done. Download the transparent PNG when you are ready.', 'success');
+        showFlashMessage('Background removed successfully.', 'success');
+    } catch (error) {
+        console.error('Background removal failed:', error);
+        resetDropAreaFeedback(bgRemoveDropArea);
+        updateBackgroundRemoveStatus('Background removal failed. Check your internet connection and try again.', 'danger');
+        showFlashMessage('Background removal failed.', 'error');
+    } finally {
+        bgRemoveBusy = false;
+        syncBackgroundRemoveButtons();
+    }
+}
+
+async function loadBackgroundRemovalEngine() {
+    if (!bgRemovalModulePromise) {
+        bgRemovalModulePromise = import(BG_REMOVAL_MODULE_URL)
+            .then(module => module.removeBackground || module.default)
+            .then(removeBackground => {
+                if (typeof removeBackground !== 'function') {
+                    throw new Error('Background removal engine is unavailable.');
+                }
+
+                return removeBackground;
+            })
+            .catch(error => {
+                bgRemovalModulePromise = null;
+                throw error;
+            });
+    }
+
+    return bgRemovalModulePromise;
+}
+
+function updateBackgroundRemoveStatus(message, type = 'muted') {
+    if (!bgRemoveStatus) return;
+
+    bgRemoveStatus.textContent = message;
+    bgRemoveStatus.dataset.state = type;
+}
+
+function syncBackgroundRemoveButtons() {
+    if (bgRemoveStartBtn) {
+        bgRemoveStartBtn.disabled = !bgRemoveSourceFile || bgRemoveBusy;
+        bgRemoveStartBtn.innerHTML = bgRemoveBusy ? `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10" opacity="0.35"></circle>
+                <path d="M22 12a10 10 0 0 1-10 10"></path>
+            </svg>
+            Removing...
+        ` : `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 20l4-16 4 9 4-5 4 12"></path>
+            </svg>
+            Remove Background
+        `;
+    }
+
+    if (bgRemoveClearBtn) {
+        bgRemoveClearBtn.disabled = (!bgRemoveSourceFile && !bgRemoveResultUrl) || bgRemoveBusy;
+    }
+}
+
+function clearBackgroundRemove() {
+    if (bgRemoveBusy) return;
+
+    revokeBackgroundRemoveSource();
+    clearBackgroundRemoveResult();
+    bgRemoveSourceFile = null;
+    bgRemoveInput.value = '';
+    setPreviewImage(bgOriginalStage, bgOriginalPreview, '');
+    setPreviewImage(bgResultStage, bgResultPreview, '');
+    resetDropAreaFeedback(bgRemoveDropArea);
+    updateBackgroundRemoveStatus('Upload an image to start.', 'muted');
+    syncBackgroundRemoveButtons();
+}
+
+function clearBackgroundRemoveResult() {
+    if (bgRemoveResultUrl) {
+        URL.revokeObjectURL(bgRemoveResultUrl);
+    }
+
+    bgRemoveResultUrl = '';
+
+    if (bgRemoveDownloadBtn) {
+        bgRemoveDownloadBtn.hidden = true;
+        bgRemoveDownloadBtn.removeAttribute('href');
+        bgRemoveDownloadBtn.download = 'background-removed.png';
+    }
+}
+
+function revokeBackgroundRemoveSource() {
+    if (bgRemoveSourceUrl) {
+        URL.revokeObjectURL(bgRemoveSourceUrl);
+    }
+
+    bgRemoveSourceUrl = '';
+}
+
+function setPreviewImage(stage, image, url) {
+    if (!stage || !image) return;
+
+    if (!url) {
+        image.removeAttribute('src');
+        stage.classList.remove('has-image');
+        return;
+    }
+
+    image.src = url;
+    stage.classList.add('has-image');
+}
+
+function getBackgroundRemovedFilename(filename) {
+    const baseName = filename.replace(/\.[^.]+$/, '');
+    return `${baseName}-no-bg.png`;
+}
+
+function getBackgroundRemoveModel() {
+    return bgRemoveModelSelect?.value || 'medium';
+}
+
+function getBackgroundRemoveModelLabel(model) {
+    return model === 'small' ? 'Fast Mode' : 'Best Quality';
+}
+
 async function processEntries(entries, options = {}) {
     const {
         statusPrefix = 'Processing',
@@ -539,7 +742,15 @@ function hidePagePreloader() {
 }
 
 function getDropAreaDefaultMessage(area) {
-    return area === batchDropArea ? 'Preparing batch files...' : 'Processing images...';
+    if (area === batchDropArea) {
+        return 'Preparing batch files...';
+    }
+
+    if (area === bgRemoveDropArea) {
+        return 'Preparing background removal...';
+    }
+
+    return 'Processing images...';
 }
 
 function isMobileControlsMode() {
@@ -999,7 +1210,7 @@ async function downloadAllAsZip() {
 }
 
 function clearAll() {
-    if (!items.length && !batchQueue.length) return;
+    if (!items.length && !batchQueue.length && !bgRemoveSourceFile && !bgRemoveResultUrl) return;
 
     // Free memory by revoking object URLs
     items.forEach(item => {
@@ -1020,9 +1231,10 @@ function clearAll() {
     resetBatchInputs();
     resetDropAreaFeedback(dropArea);
     resetDropAreaFeedback(batchDropArea);
+    clearBackgroundRemove();
     updateBatchSelectionUI();
     updateSummary();
-    showFlashMessage("All items and queued batch files have been cleared successfully!", "success");
+    showFlashMessage("All processed items, batch files, and background remover previews have been cleared.", "success");
 }
 
 function updateSummary() {
