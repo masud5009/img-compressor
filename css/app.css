@@ -23,6 +23,10 @@ body {
     overflow-x: hidden;
 }
 
+[hidden] {
+    display: none !important;
+}
+
 body.is-loading {
     overflow: hidden;
 }
@@ -223,19 +227,6 @@ h1 {
 .bg-remove-layout {
     display: grid;
     gap: 18px;
-}
-
-.bg-remove-intro {
-    display: grid;
-    gap: 8px;
-}
-
-.bg-remove-intro p {
-    color: var(--muted);
-}
-
-.bg-remove-note {
-    margin: 0;
 }
 
 .bg-remove-actions {

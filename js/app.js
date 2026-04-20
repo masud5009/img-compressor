@@ -23,6 +23,8 @@ const outputPrefixInput = $('#outputPrefix');
 const preserveStructureCheck = $('#preserveStructure');
 const bgRemoveDropArea = $('#bgRemoveDropArea');
 const bgRemoveInput = $('#bgRemoveInput');
+const bgRemoveActions = $('#bgRemoveActions');
+const bgRemoveOutput = $('#bgRemoveOutput');
 const bgRemoveStartBtn = $('#bgRemoveStartBtn');
 const bgRemoveDownloadBtn = $('#bgRemoveDownloadBtn');
 const bgRemoveClearBtn = $('#bgRemoveClearBtn');
@@ -534,6 +536,16 @@ function updateBackgroundRemoveStatus(message, type = 'muted') {
 }
 
 function syncBackgroundRemoveButtons() {
+    const hasBackgroundRemoveSelection = Boolean(bgRemoveSourceFile || bgRemoveResultUrl);
+
+    if (bgRemoveActions) {
+        bgRemoveActions.hidden = !hasBackgroundRemoveSelection;
+    }
+
+    if (bgRemoveOutput) {
+        bgRemoveOutput.hidden = !hasBackgroundRemoveSelection;
+    }
+
     if (bgRemoveStartBtn) {
         bgRemoveStartBtn.disabled = !bgRemoveSourceFile || bgRemoveBusy;
         bgRemoveStartBtn.innerHTML = bgRemoveBusy ? `
