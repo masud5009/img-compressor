@@ -91,6 +91,16 @@ function initEventListeners() {
     bindDropArea(batchDropArea, handleBatchSelection);
     bindDropArea(bgRemoveDropArea, handleBackgroundRemoveSelection);
 
+    // Keyboard access for file-select labels (Enter / Space opens the file picker)
+    $$('.file-label[for]').forEach(label => {
+        label.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            const input = document.getElementById(label.getAttribute('for'));
+            if (input) input.click();
+        });
+    });
+
     // File input
     fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
     batchFileInput.addEventListener('change', (e) => handleBatchSelection(e.target.files));
@@ -160,15 +170,32 @@ function initEventListeners() {
     processBatchBtn.addEventListener('click', processBatchQueue);
     cancelBatchBtn.addEventListener('click', cancelBatchProcess);
 
-    // Tabs
+    // Tabs (click + full keyboard navigation)
     tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            closeControlsShell();
-            tabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
+        tab.addEventListener('click', () => activateTab(tab));
 
-            tabContents.forEach(content => content.classList.remove('active'));
-            $(`#${tab.dataset.tab}-tab`).classList.add('active');
+        tab.addEventListener('keydown', (event) => {
+            const currentIndex = tabs.indexOf(tab);
+            let targetIndex = null;
+
+            if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+                targetIndex = (currentIndex + 1) % tabs.length;
+            } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+                targetIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+            } else if (event.key === 'Home') {
+                targetIndex = 0;
+            } else if (event.key === 'End') {
+                targetIndex = tabs.length - 1;
+            } else if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                activateTab(tab);
+                return;
+            }
+
+            if (targetIndex !== null) {
+                event.preventDefault();
+                activateTab(tabs[targetIndex], { focus: true });
+            }
         });
     });
 
@@ -183,6 +210,24 @@ function initEventListeners() {
             closeControlsShell();
         }
     });
+
+    function handleHash() {
+        const hash = window.location.hash;
+        if (!hash) return;
+        if (hash === '#tab-remove-bg' || hash === '#remove-bg') {
+            const tab = $('#tab-remove-bg');
+            if (tab) activateTab(tab);
+        } else if (hash === '#tab-batch' || hash === '#batch') {
+            const tab = $('#tab-batch');
+            if (tab) activateTab(tab);
+        } else if (hash === '#tab-settings' || hash === '#compressor' || hash === '#settings') {
+            const tab = $('#tab-settings');
+            if (tab) activateTab(tab);
+        }
+    }
+
+    window.addEventListener('hashchange', handleHash);
+    handleHash();
 }
 
 function bindDropArea(area, onDrop) {
@@ -202,6 +247,25 @@ function bindDropArea(area, onDrop) {
         area.classList.remove('drag');
         onDrop(e.dataTransfer.files);
     });
+}
+
+function activateTab(tab, { focus = false } = {}) {
+    if (!tab) return;
+
+    closeControlsShell();
+
+    tabs.forEach(t => {
+        const isActive = t === tab;
+        t.classList.toggle('active', isActive);
+        t.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        t.tabIndex = isActive ? 0 : -1;
+    });
+
+    tabContents.forEach(content => content.classList.remove('active'));
+    const panel = $(`#${tab.dataset.tab}-tab`);
+    if (panel) panel.classList.add('active');
+
+    if (focus) tab.focus();
 }
 
 function applyPreset() {
@@ -986,6 +1050,21 @@ function loadImage(file) {
     });
 }
 
+function getItemMetaInfo(file, processed) {
+    const savedPercent = getSizeChangePercent(file.size, processed.blob.size);
+    const origFmt = toDisplayFormat(file.type);
+    const compFmt = toDisplayFormat(processed.format);
+    const formatLabel = origFmt === compFmt ? origFmt : `${origFmt} → ${compFmt}`;
+    const isResized = processed.originalWidth !== processed.width || processed.originalHeight !== processed.height;
+    const dimLabel = isResized 
+        ? `${processed.originalWidth}×${processed.originalHeight} → ${processed.width}×${processed.height}`
+        : `${processed.width} × ${processed.height}`;
+    const badgeText = savedPercent > 0 ? `-${savedPercent}%` : (savedPercent < 0 ? `+${Math.abs(savedPercent)}%` : '0%');
+    const badgeClass = savedPercent > 0 ? 'is-saved' : (savedPercent < 0 ? 'is-larger' : '');
+
+    return { savedPercent, formatLabel, dimLabel, badgeText, badgeClass };
+}
+
 function addImageToGrid(file, processed, options = {}) {
     const originalUrl = URL.createObjectURL(file);
     const batchOptions = options.batchOptions || null;
@@ -995,14 +1074,23 @@ function addImageToGrid(file, processed, options = {}) {
     const itemEl = document.createElement('div');
     itemEl.className = 'item';
     itemEl.style.animationDelay = `${Math.min(items.length * 70, 280)}ms`;
+
+    const meta = getItemMetaInfo(file, processed);
+
     itemEl.innerHTML = `
         <div class="preview-container">
+          <button class="item-remove-btn remove" aria-label="Remove ${escapeHtml(file.name)}" title="Remove image">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
           <div class="preview-comparison">
             <div class="preview-original">
-              <img class="preview-img" src="${originalUrl}" alt="Original">
+              <img class="preview-img" src="${originalUrl}" alt="Original image: ${escapeHtml(file.name)}">
             </div>
             <div class="preview-compressed">
-              <img class="preview-img" src="${processed.url}" alt="Compressed">
+              <img class="preview-img" src="${processed.url}" alt="Compressed image: ${escapeHtml(file.name)}">
             </div>
             <div class="comparison-handle"></div>
           </div>
@@ -1011,31 +1099,27 @@ function addImageToGrid(file, processed, options = {}) {
           </div>
         </div>
         <div class="meta">
-          <div class="meta-row">
-            <span class="meta-label">Name:</span>
-            <span class="meta-value">${escapeHtml(file.name)}</span>
+          <div class="item-head">
+            <span class="item-name" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>
+            <span class="item-format-tag">${meta.formatLabel}</span>
           </div>
-          <div class="meta-row">
-            <span class="meta-label">Size:</span>
-            <span class="meta-value">${escapeHtml(formatSizeComparison(file.size, processed.blob.size))}</span>
+          <div class="item-metrics">
+            <div class="item-sizes">
+              <span class="item-size-orig">${formatBytes(file.size)}</span>
+              <span class="item-arrow">→</span>
+              <span class="item-size-comp">${formatBytes(processed.blob.size)}</span>
+            </div>
+            <span class="item-badge ${meta.badgeClass}">
+              ${meta.badgeText}
+            </span>
           </div>
-          <div class="meta-row">
-            <span class="meta-label">Dimensions:</span>
-            <span class="meta-value">${processed.originalWidth}×${processed.originalHeight} → ${processed.width}×${processed.height}</span>
+          <div class="item-details">
+            <span class="item-dims">${meta.dimLabel}</span>
+            ${sourcePath ? `<span class="item-source" title="${escapeHtml(sourcePath)}">${escapeHtml(sourcePath)}</span>` : ''}
           </div>
-          <div class="meta-row">
-            <span class="meta-label">Format:</span>
-            <span class="meta-value">${file.type} → ${processed.format}</span>
-          </div>
-          ${sourcePath ? `
-          <div class="meta-row">
-            <span class="meta-label">Source:</span>
-            <span class="meta-value">${escapeHtml(sourcePath)}</span>
-          </div>
-          ` : ''}
         </div>
         <div class="actions">
-          <a href="${processed.url}" class="btn btn-sm download-link">
+          <a href="${processed.url}" class="btn btn-sm download-link" aria-label="Download compressed ${escapeHtml(file.name)}">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="7 10 12 15 17 10"></polyline>
@@ -1043,7 +1127,7 @@ function addImageToGrid(file, processed, options = {}) {
             </svg>
             Download
           </a>
-          <button class="btn btn-sm btn-outline recompress">
+          <button class="btn btn-sm btn-outline recompress" aria-label="Recompress ${escapeHtml(file.name)} with current settings">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
               <path d="M3 3v5h5"></path>
@@ -1051,13 +1135,6 @@ function addImageToGrid(file, processed, options = {}) {
               <path d="M16 16h5v5"></path>
             </svg>
             Recompress
-          </button>
-          <button class="btn btn-sm btn-outline remove">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M18 6 6 18"></path>
-              <path d="M6 6l12 12"></path>
-            </svg>
-            Remove
           </button>
         </div>
       `;
@@ -1125,17 +1202,28 @@ async function recompressImage(file, itemEl) {
         $('.download-link', itemEl).download = getItemDownloadName(item);
         $('.progress-bar', itemEl).style.width = getProgressWidth(file.size, processed.blob.size);
 
-        $('.meta-row:nth-child(2) .meta-value', itemEl).textContent =
-            formatSizeComparison(file.size, processed.blob.size);
+        const meta = getItemMetaInfo(file, processed);
 
-        $('.meta-row:nth-child(3) .meta-value', itemEl).textContent =
-            `${processed.originalWidth}×${processed.originalHeight} → ${processed.width}×${processed.height}`;
+        const formatTag = $('.item-format-tag', itemEl);
+        if (formatTag) formatTag.textContent = meta.formatLabel;
 
-        $('.meta-row:nth-child(4) .meta-value', itemEl).textContent =
-            `${file.type} → ${processed.format}`;
+        const sizeOrig = $('.item-size-orig', itemEl);
+        if (sizeOrig) sizeOrig.textContent = formatBytes(file.size);
+
+        const sizeComp = $('.item-size-comp', itemEl);
+        if (sizeComp) sizeComp.textContent = formatBytes(processed.blob.size);
+
+        const badge = $('.item-badge', itemEl);
+        if (badge) {
+            badge.textContent = meta.badgeText;
+            badge.className = `item-badge ${meta.badgeClass}`;
+        }
+
+        const dimEl = $('.item-dims', itemEl);
+        if (dimEl) dimEl.textContent = meta.dimLabel;
 
         updateSummary();
-        showFlashMessage(`Recompressed: ${toDisplayFormat(file.type)} → ${toDisplayFormat(processed.format)}`,"success");
+        showFlashMessage(`Recompressed: ${meta.formatLabel}`, "success");
 
         updateStatus('Ready', 'success');
     } catch (error) {
@@ -1265,6 +1353,7 @@ function updateSummary() {
 function showFlashMessage(message, type = "success") {
     const flash = document.createElement("div");
     flash.className = `flash-message ${type}`;
+    flash.setAttribute("role", type === "error" ? "alert" : "status");
     flash.textContent = message;
 
     document.body.appendChild(flash);
@@ -1407,7 +1496,8 @@ function escapeHtml(value) {
 }
 
 function toDisplayFormat(mimeType) {
-    return mimeType ? mimeType.toUpperCase() : 'UNKNOWN';
+    if (!mimeType) return 'UNKNOWN';
+    return mimeType.replace(/^image\//i, '').toUpperCase();
 }
 
 function getOutputFilename(originalName, outputFormat, originalFormat = null) {

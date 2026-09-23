@@ -4,11 +4,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Compressor</title>
+    <title>Free Online Image Compressor — Compress JPEG, PNG &amp; WebP in Your Browser</title>
+    <meta name="description" content="Compress JPEG, PNG, and WebP images online for free. Images are processed locally in your browser and never uploaded to a server. Includes batch compression, resizing, and background removal.">
+    <meta name="author" content="Masud Rana">
+    <link rel="canonical" href="https://masud5009.github.io/img-compressor/">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Image Compressor">
+    <meta property="og:title" content="Free Online Image Compressor — Compress JPEG, PNG &amp; WebP in Your Browser">
+    <meta property="og:description" content="Compress JPEG, PNG, and WebP images online for free. Everything runs locally in your browser — your images are never uploaded to a server.">
+    <meta property="og:url" content="https://masud5009.github.io/img-compressor/">
+
+    <!-- Twitter/X card -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Free Online Image Compressor">
+    <meta name="twitter:description" content="Compress JPEG, PNG, and WebP images online for free. Images are processed locally in your browser — never uploaded to a server.">
+
+    <meta name="theme-color" content="#0b1220">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <link rel="stylesheet" href="css/app.css">
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Image Compressor",
+        "url": "https://masud5009.github.io/img-compressor/",
+        "description": "Free online image compressor that runs entirely in your browser. Compress JPEG, PNG, and WebP images, resize photos, remove backgrounds, and process images in batches without uploading anything to a server.",
+        "applicationCategory": "MultimediaApplication",
+        "operatingSystem": "Any (web browser)",
+        "browserRequirements": "Requires JavaScript and a modern web browser",
+        "inLanguage": "en",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "featureList": "Browser-based image compression, JPEG/PNG/WebP output, image resizing, batch processing with ZIP download, background removal, drag-and-drop upload",
+        "author": { "@type": "Person", "name": "Masud Rana", "url": "https://github.com/masud5009" }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": "Are my images uploaded to a server?",
+                "acceptedAnswer": { "@type": "Answer", "text": "No. All image compression and background removal happen locally in your browser using JavaScript. Your images are never uploaded to any server and never leave your device." }
+            },
+            {
+                "@type": "Question",
+                "name": "Is this image compressor free?",
+                "acceptedAnswer": { "@type": "Answer", "text": "Yes. This image compressor is completely free to use. There is no signup, no account, and no limit on how many images you can compress." }
+            },
+            {
+                "@type": "Question",
+                "name": "Which image formats are supported?",
+                "acceptedAnswer": { "@type": "Answer", "text": "You can compress JPEG, PNG, and WebP images, as well as any other image format your browser can open, such as GIF, BMP, or AVIF. Compressed images can be downloaded as JPEG, PNG, or WebP." }
+            },
+            {
+                "@type": "Question",
+                "name": "Does compression reduce image quality?",
+                "acceptedAnswer": { "@type": "Answer", "text": "Lossy compression (JPEG and WebP) trades a small amount of quality for a much smaller file size, and you control the balance with the quality slider. PNG output is lossless, so the image stays pixel-identical to the original." }
+            },
+            {
+                "@type": "Question",
+                "name": "Can I compress multiple images at once?",
+                "acceptedAnswer": { "@type": "Answer", "text": "Yes. You can select or drop multiple files, or use the Batch Process tab to compress a whole folder of images with the same settings and download everything as a single ZIP file." }
+            },
+            {
+                "@type": "Question",
+                "name": "Can I use this image compressor on my phone?",
+                "acceptedAnswer": { "@type": "Answer", "text": "Yes. The tool runs in any modern mobile browser, so you can compress images on Android, iPhone, tablets, and desktop computers without installing an app." }
+            },
+            {
+                "@type": "Question",
+                "name": "What is WebP?",
+                "acceptedAnswer": { "@type": "Answer", "text": "WebP is a modern image format developed by Google. It produces significantly smaller files than JPEG or PNG at similar visual quality and is supported by all modern browsers, which makes it ideal for websites." }
+            },
+            {
+                "@type": "Question",
+                "name": "How do I download the compressed image?",
+                "acceptedAnswer": { "@type": "Answer", "text": "After compression, each result card has a Download button that saves the image to your device. If you processed several images, use the Download All (.zip) button to get them in one archive." }
+            }
+        ]
+    }
+    </script>
 </head>
 
 <body class="is-loading">
@@ -20,10 +104,54 @@
         </div>
     </div>
 
-    <div class="wrap">
-        <div class="card">
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="brand" href="index.html" aria-label="Image Compressor — home">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M4 14h6v6"></path>
+                    <path d="M20 10h-6V4"></path>
+                    <path d="M14 10l7-7"></path>
+                    <path d="M3 21l7-7"></path>
+                </svg>
+                <span>Image Compressor</span>
+            </a>
+            <nav class="site-nav" aria-label="Primary navigation">
+                <ul>
+                    <li><a href="index.html" aria-current="page">Home</a></li>
+                    <li><a href="about.html">About</a></li>
+                    <li><a href="privacy-policy.html">Privacy Policy</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="wrap" id="main-content">
+        <section class="hero" aria-labelledby="page-title">
+            <h1 id="page-title">Free Online Image Compressor</h1>
+            <p class="hero__lead">
+                Compress JPEG, PNG, and WebP images directly in your browser. 100% private — files are processed locally and never uploaded.
+            </p>
+            <ul class="hero__points">
+                <li>100% Free &amp; No Signup</li>
+                <li>Private: In-Browser Processing</li>
+                <li>JPEG, PNG, WebP &amp; more</li>
+                <li>Batch &amp; ZIP Download</li>
+            </ul>
+        </section>
+
+        <noscript>
+            <p class="noscript-warning">
+                The interactive image tools on this page require JavaScript. The informational and legal pages
+                of this site work without JavaScript.
+            </p>
+        </noscript>
+
+        <div class="card" id="compressor">
             <div class="head">
-                <h1></h1>
+                <span class="tool-heading">Image Toolkit</span>
                 <div class="head-actions">
                     <button id="downloadAllBtn" class="btn" disabled>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -47,13 +175,16 @@
                 </div>
             </div>
 
-            <div class="tabs">
-                <div class="tab active" data-tab="settings">Image Compression</div>
-                <div class="tab" data-tab="remove-bg">Background Remover</div>
-                <div class="tab" data-tab="batch">Batch Process</div>
+            <div class="tabs" role="tablist" aria-label="Image tools">
+                <div class="tab active" data-tab="settings" role="tab" id="tab-settings" aria-selected="true"
+                    aria-controls="settings-tab" tabindex="0">Image Compression</div>
+                <div class="tab" data-tab="remove-bg" role="tab" id="tab-remove-bg" aria-selected="false"
+                    aria-controls="remove-bg-tab" tabindex="-1">Background Remover</div>
+                <div class="tab" data-tab="batch" role="tab" id="tab-batch" aria-selected="false"
+                    aria-controls="batch-tab" tabindex="-1">Batch Process</div>
             </div>
 
-            <div class="tab-content active" id="settings-tab">
+            <div class="tab-content active" id="settings-tab" role="tabpanel" aria-labelledby="tab-settings">
                 <div class="mobile-controls-bar">
                     <button id="openControlsBtn" class="btn btn-outline mobile-controls-toggle" type="button"
                         aria-controls="controlsShell" aria-expanded="false">
@@ -213,9 +344,9 @@
                 </div>
 
                 <div class="drop-area" id="dropArea">
-                    <div class="icon">📁</div>
-                    <div>Drag & drop images here or</div>
-                    <label for="fileInput" class="file-label">Select Files</label>
+                    <div class="icon" aria-hidden="true">📁</div>
+                    <div>Drag &amp; drop images here or</div>
+                    <label for="fileInput" class="file-label" tabindex="0" role="button">Select Files</label>
                     <input type="file" id="fileInput" accept="image/*" multiple>
                     <div class="drop-area-status" aria-live="polite">
                         <span class="drop-area-status__spinner"></span>
@@ -223,18 +354,12 @@
                     </div>
                 </div>
 
-                <p class="hint">
-                    <strong>Tip:</strong> All processing happens in your browser - no images are uploaded to any
-                    server.<br>
-                    Keep Original preserves the uploaded format. For best size reduction on photos, WEBP or JPEG usually
-                    works best. PNG is best for graphics with transparency.
-                </p>
 
                 <div id="result" class="grid"></div>
 
                 <div class="foot">
-                    <div class="summary" id="summary">0 images processed</div>
-                    <div class="status">
+                    <div class="summary" id="summary" aria-live="polite">0 images processed</div>
+                    <div class="status" aria-live="polite">
                         <span class="status-icon"></span>
                         <span id="statusText">Ready</span>
                     </div>
@@ -250,12 +375,12 @@
                 </div>
             </div>
 
-            <div class="tab-content" id="remove-bg-tab">
+            <div class="tab-content" id="remove-bg-tab" role="tabpanel" aria-labelledby="tab-remove-bg">
                 <div class="bg-remove-layout">
                     <div class="drop-area" id="bgRemoveDropArea">
                         <div class="icon">✂️</div>
                         <div>Drop a photo or product image here</div>
-                        <label for="bgRemoveInput" class="file-label">Choose Image</label>
+                        <label for="bgRemoveInput" class="file-label" tabindex="0" role="button">Choose Image</label>
                         <input type="file" id="bgRemoveInput" accept="image/*">
                         <div class="drop-area-status" aria-live="polite">
                             <span class="drop-area-status__spinner"></span>
@@ -308,7 +433,7 @@
                 </div>
             </div>
 
-            <div class="tab-content" id="batch-tab">
+            <div class="tab-content" id="batch-tab" role="tabpanel" aria-labelledby="tab-batch">
                 <div class="control-group">
                     <h3>Batch Processing</h3>
                     <p style="margin-bottom: 16px;">Process multiple images with the same settings</p>
@@ -317,8 +442,8 @@
                         <div class="icon">📦</div>
                         <div>Drag & drop multiple images, or choose files/folder</div>
                         <div class="file-actions">
-                            <label for="batchFileInput" class="file-label">Select Files</label>
-                            <label for="batchFolderInput" class="file-label">Select Folder</label>
+                            <label for="batchFileInput" class="file-label" tabindex="0" role="button">Select Files</label>
+                            <label for="batchFolderInput" class="file-label" tabindex="0" role="button">Select Folder</label>
                         </div>
                         <input type="file" id="batchFileInput" accept="image/*" multiple>
                         <input type="file" id="batchFolderInput" webkitdirectory directory multiple>
@@ -353,10 +478,239 @@
             </div>
         </div>
 
-       <div class="copyright">
-            <p>&copy; 2025 Masud Rana. All rights reserved.</p>
+        <!-- How It Works (3 Steps) -->
+        <section class="section-block" aria-labelledby="steps-title">
+            <div class="section-header">
+                <h2 id="steps-title" class="section-title">How to Compress Images Online</h2>
+                <p class="section-subtitle">Fast, secure in-browser image optimization in three simple steps.</p>
+            </div>
+            <div class="steps-grid">
+                <div class="step-card">
+                    <div class="step-num">01</div>
+                    <div class="step-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                    </div>
+                    <h3>Upload Images</h3>
+                    <p>Drop your photos directly into the compressor or click Select Files. Batch folders are fully supported.</p>
+                </div>
+
+                <div class="step-card">
+                    <div class="step-num">02</div>
+                    <div class="step-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                    </div>
+                    <h3>Fine-Tune Settings</h3>
+                    <p>Adjust the quality slider, choose WebP, PNG, or JPEG, or apply smart dimension presets with one click.</p>
+                </div>
+
+                <div class="step-card">
+                    <div class="step-num">03</div>
+                    <div class="step-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                    </div>
+                    <h3>Download Instantly</h3>
+                    <p>Inspect the before/after comparison slider and save single images or download all as a ZIP file.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Why Choose Image Compressor -->
+        <section class="section-block" aria-labelledby="features-title">
+            <div class="section-header">
+                <h2 id="features-title" class="section-title">Why Choose Image Compressor</h2>
+                <p class="section-subtitle">Engineered for maximum compression speed, quality, and complete privacy.</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon feature-icon--privacy">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                    </div>
+                    <h3>100% In-Browser Privacy</h3>
+                    <p>Your photos never leave your device. All processing runs locally with HTML5 Canvas and WebAssembly — zero server uploads.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon feature-icon--speed">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                        </svg>
+                    </div>
+                    <h3>Blazing Fast &amp; Unlimited</h3>
+                    <p>No queues, no daily caps, and no watermarks. Enjoy instantaneous compression at the full speed of your computer hardware.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon feature-icon--format">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 14h6v6"></path>
+                            <path d="M20 10h-6V4"></path>
+                            <path d="M14 10l7-7"></path>
+                            <path d="M3 21l7-7"></path>
+                        </svg>
+                    </div>
+                    <h3>Modern WebP &amp; Multi-Format</h3>
+                    <p>Compress standard JPEG and PNG files, or convert to next-gen WebP to shrink images by up to 80% with crisp visual fidelity.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- FAQ Accordion -->
+        <section class="section-block" id="faq" aria-labelledby="faq-title">
+            <div class="section-header">
+                <h2 id="faq-title" class="section-title">Frequently Asked Questions</h2>
+                <p class="section-subtitle">Quick answers to common questions about our free image compression tool.</p>
+            </div>
+            <div class="faq-accordion">
+                <details class="faq-accordion-item">
+                    <summary class="faq-accordion-question">
+                        <span>Are my images uploaded to any server?</span>
+                        <svg class="faq-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </summary>
+                    <div class="faq-accordion-answer">
+                        <p>No. All image compression, resizing, and background removal run 100% locally in your web browser using HTML5 Canvas and WebAssembly. Your files never leave your device.</p>
+                    </div>
+                </details>
+
+                <details class="faq-accordion-item">
+                    <summary class="faq-accordion-question">
+                        <span>Is this image compressor free?</span>
+                        <svg class="faq-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </summary>
+                    <div class="faq-accordion-answer">
+                        <p>Yes. The tool is completely free with no registration, no accounts, and no limit on how many images you can process.</p>
+                    </div>
+                </details>
+
+                <details class="faq-accordion-item">
+                    <summary class="faq-accordion-question">
+                        <span>Which image formats are supported?</span>
+                        <svg class="faq-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </summary>
+                    <div class="faq-accordion-answer">
+                        <p>You can upload JPEG, PNG, WebP, GIF, BMP, and AVIF images. Compressed files can be exported in JPEG, PNG, or WebP format.</p>
+                    </div>
+                </details>
+
+                <details class="faq-accordion-item">
+                    <summary class="faq-accordion-question">
+                        <span>Does compression reduce image quality?</span>
+                        <svg class="faq-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </summary>
+                    <div class="faq-accordion-answer">
+                        <p>Lossy compression (JPEG and WebP) trades a tiny amount of invisible data for massive file size reduction, controlled by your quality slider. PNG output uses lossless compression, keeping every pixel identical to the original.</p>
+                    </div>
+                </details>
+
+                <details class="faq-accordion-item">
+                    <summary class="faq-accordion-question">
+                        <span>Can I compress multiple images at once?</span>
+                        <svg class="faq-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </summary>
+                    <div class="faq-accordion-answer">
+                        <p>Yes. You can select multiple images or use the Batch Process tab to compress entire folders and download everything as a single organized ZIP file.</p>
+                    </div>
+                </details>
+
+                <details class="faq-accordion-item">
+                    <summary class="faq-accordion-question">
+                        <span>What is WebP and why should I use it?</span>
+                        <svg class="faq-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </summary>
+                    <div class="faq-accordion-answer">
+                        <p>WebP is Google's modern web format that delivers 25–35% smaller file sizes than JPEG at identical quality, while supporting PNG-style transparency. All modern browsers fully support it.</p>
+                    </div>
+                </details>
+
+                <details class="faq-accordion-item">
+                    <summary class="faq-accordion-question">
+                        <span>Can I use this image compressor on mobile?</span>
+                        <svg class="faq-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </summary>
+                    <div class="faq-accordion-answer">
+                        <p>Yes. The application is fully responsive and runs smoothly in any mobile browser on iOS and Android without needing to install an app.</p>
+                    </div>
+                </details>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="site-footer__inner">
+            <div class="site-footer__top">
+                <div class="footer-brand-col">
+                    <a class="brand" href="index.html" aria-label="Image Compressor Home">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M4 14h6v6"></path>
+                            <path d="M20 10h-6V4"></path>
+                            <path d="M14 10l7-7"></path>
+                            <path d="M3 21l7-7"></path>
+                        </svg>
+                        <span>Image Compressor</span>
+                    </a>
+                    <p class="footer-desc">
+                        Free, fast, and privacy-first in-browser image optimization. Compress, resize, and convert JPEG, PNG, and WebP files locally with zero server uploads.
+                    </p>
+                    <div class="footer-badge">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        </svg>
+                        <span>100% Client-Side Processing</span>
+                    </div>
+                </div>
+
+                <div class="footer-links-grid">
+                    <div class="footer-col">
+                        <span class="footer-col-heading">Navigation</span>
+                        <ul class="footer-links">
+                            <li><a href="index.html">Home</a></li>
+                            <li><a href="about.html">About</a></li>
+                            <li><a href="privacy-policy.html">Privacy Policy</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="footer-col">
+                        <span class="footer-col-heading">Tools</span>
+                        <ul class="footer-links">
+                            <li><a href="index.html#compressor">Image Compressor</a></li>
+                            <li><a href="index.html#tab-remove-bg">Background Remover</a></li>
+                            <li><a href="index.html#tab-batch">Batch Processing</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="footer-col">
+                        <span class="footer-col-heading">Open Source</span>
+                        <ul class="footer-links">
+                            <li><a href="https://github.com/masud5009/img-compressor" rel="noopener noreferrer" target="_blank">GitHub Repo</a></li>
+                            <li><a href="https://github.com/masud5009" rel="noopener noreferrer" target="_blank">Author Profile</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="site-footer__bottom">
+                <p class="site-footer__copy">&copy; 2025&ndash;2026 Masud Rana. All rights reserved.</p>
+                <a href="#main-content" class="back-to-top" aria-label="Back to top">
+                    Back to top &uarr;
+                </a>
+            </div>
         </div>
-    </div>
+    </footer>
 
     <script src="js/app.js"></script>
 </body>
